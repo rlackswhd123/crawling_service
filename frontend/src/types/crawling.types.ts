@@ -19,6 +19,7 @@ export interface Domain {
 
 export interface Post {
   id: string;
+  post_id: string;  // 실제 사이트의 post_id
   title: string;
   url: string;
   postAt: string;
@@ -30,6 +31,7 @@ export interface Post {
 export interface Attachment {
   name: string;
   size: string;
+  url?: string;
 }
 
 export interface CrawlConfig {

@@ -42,18 +42,13 @@
             id="auto-end-page"
           >
           <label for="auto-end-page">
-            🔧 자동 엔드 페이지
-            <span class="hint">끝 페이지를 자동으로 감지합니다</span>
+            🔧 자동 엔드 페이지 탐색
+            <span class="hint">끝 페이지를 자동으로 감지합니다 (HTML → Selenium 순서로 시도)</span>
           </label>
         </div>
-
-        <div class="form-group">
-          <label>OCR 엔진 선택</label>
-          <select v-model="formData.ocrEngine">
-            <option value="">없음</option>
-            <option value="paddle">paddle</option>
-            <option value="gcv">gcv</option>
-          </select>
+        <div v-if="formData.autoEndPage" class="auto-end-page-info">
+          <span class="info-icon">ℹ️</span>
+          <span>자동 엔드 페이지 탐색이 활성화되었습니다. 끝 페이지 입력값은 무시됩니다.</span>
         </div>
 
         <div class="form-group">
@@ -96,13 +91,18 @@ const emit = defineEmits<{
 const formData = ref<CrawlConfig>({
   id: '', // 작업 ID는 더 이상 사용하지 않지만 타입 호환성을 위해 유지
   startPage: 1,
-  endPage: 10,
+  endPage: 2,
   autoEndPage: false,
   ocrEngine: '',
   pageParam: '',
 });
 
 const submitForm = () => {
+  // autoEndPage가 true일 때 endPage 값은 무시되지만, 검증을 위해 로깅
+  if (formData.value.autoEndPage) {
+    console.log('🔍 자동 엔드 페이지 탐색 활성화됨. 끝 페이지는 자동으로 감지됩니다.');
+  }
+  
   emit('start', formData.value);
 };
 </script>
@@ -275,6 +275,25 @@ const submitForm = () => {
   font-size: 12px;
   color: var(--text-secondary);
   margin-top: 6px;
+}
+
+.auto-end-page-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-light);
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  margin-top: -10px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.info-icon {
+  font-size: 16px;
+  flex-shrink: 0;
 }
 
 .modal-footer {

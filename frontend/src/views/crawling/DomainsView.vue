@@ -12,6 +12,8 @@
       @select-service="handleSelectService"
       @open-create-modal="showDomainCreateModal = true"
       @open-create-service-modal="openServiceCreateModal"
+      @edit-domain="editDomain"
+      @edit-service="editService"
       @delete-domain="deleteDomain"
       @delete-service="deleteService"
     />
@@ -40,7 +42,6 @@
       <CrawledPostList
         :posts="selectedDomainPosts"
         @view-post="viewPost"
-        @delete-post="deletePost"
       />
     </div>
 
@@ -199,7 +200,7 @@ const loadPosts = async (domainId: number | string, serviceId: number | string) 
     const postsData = await getPostsAPI({
       domainId: String(domainId),
       serviceId: String(serviceId),
-      limit: 100,
+      limit: 10000,  // 충분히 큰 값으로 설정하여 모든 데이터 가져오기
       offset: 0
     });
     
@@ -207,6 +208,7 @@ const loadPosts = async (domainId: number | string, serviceId: number | string) 
     const key = `${domainId}-${serviceId}`;
     posts.value[key] = postsData.map((p: any) => ({
       id: p.id,
+      post_id: p.post_id || p.id,  // post_id 우선, 없으면 id 사용
       title: p.title,
       url: p.url,
       postAt: p.postAt || p.crawledAt,
@@ -214,7 +216,8 @@ const loadPosts = async (domainId: number | string, serviceId: number | string) 
       selector: '',  // 사용하지 않음
       attachments: (p.attachments || []).map((att: any) => ({
         name: att.name || att.url || '첨부파일',
-        size: att.size ? `${att.size} bytes` : ''
+        size: att.size ? `${att.size} bytes` : '',
+        url: att.url || null
       }))
     }));
   } catch (error: any) {
@@ -230,8 +233,16 @@ interface DomainFormData {
   name: string;
 }
 
+const isCreatingDomain = ref(false);
+
 const createDomain = async (domain: DomainFormData) => {
+  if (isCreatingDomain.value) {
+    return; // 이미 생성 중이면 무시
+  }
+  
   try {
+    isCreatingDomain.value = true;
+    
     // 도메인 이름만 입력받고, baseUrl은 나중에 서비스 추가 시 설정
     await createDomainAPI({
       name: domain.name,
@@ -246,6 +257,8 @@ const createDomain = async (domain: DomainFormData) => {
     console.error('도메인 생성 실패:', error);
     const errorMessage = error?.message || error?.detail || '도메인 생성에 실패했습니다.';
     alert(`도메인 생성에 실패했습니다.\n${errorMessage}`);
+  } finally {
+    isCreatingDomain.value = false;
   }
 };
 
@@ -308,6 +321,15 @@ const startCrawl = async (crawlConfig: CrawlConfig) => {
       service: selectedService.value,
       config: crawlConfig
     });
+    
+    // 자동 엔드 페이지 탐색 활성화 확인
+    if (crawlConfig.autoEndPage) {
+      console.log('🔍 자동 엔드 페이지 탐색 활성화됨:', {
+        startPage: crawlConfig.startPage,
+        endPage: crawlConfig.endPage,
+        note: '끝 페이지는 자동으로 감지됩니다 (HTML → Selenium 순서로 시도)'
+      });
+    }
     
     // 디버깅: 셀렉터 확인
     console.warn('🔍 [크롤링 시작] 셀렉터 확인:', {
@@ -417,13 +439,22 @@ const deleteService = async (domainId: number | string, serviceId: number | stri
   }
 };
 
-const deletePost = (post: Post) => {
-  if (confirm('정말 이 게시물을 삭제하시겠습니까?')) {
-    if (!selectedDomainId.value || !selectedServiceId.value) return;
-    const key = `${selectedDomainId.value}-${selectedServiceId.value}`;
-    const domainPosts = posts.value[key];
-    if (domainPosts) {
-      posts.value[key] = domainPosts.filter((p: Post) => p.id !== post.id);
+
+const editDomain = (domainId: number | string) => {
+  // TODO: 도메인 편집 모달 구현
+  const domain = domains.value.find((d: Domain) => d.id === domainId);
+  if (domain) {
+    alert(`도메인 편집 기능은 아직 구현되지 않았습니다.\n도메인: ${domain.name}`);
+  }
+};
+
+const editService = (domainId: number | string, serviceId: number | string) => {
+  // TODO: 서비스 편집 모달 구현
+  const domain = domains.value.find((d: Domain) => d.id === domainId);
+  if (domain) {
+    const service = domain.services?.find((s: Service) => s.id === serviceId);
+    if (service) {
+      alert(`서비스 편집 기능은 아직 구현되지 않았습니다.\n서비스: ${service.name}`);
     }
   }
 };
