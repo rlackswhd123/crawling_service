@@ -2,13 +2,19 @@
   <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal-content large">
       <div class="modal-header">
-        <h2>게시물 상세 내용</h2>
+        <div class="header-content">
+          <h2>게시물 상세 내용</h2>
+          <div class="post-title">{{ post.title }}</div>
+        </div>
         <button class="btn-close" @click="$emit('close')">×</button>
       </div>
 
       <div class="modal-body">
         <div class="content-section">
-          <h3 class="content-title">본문 내용</h3>
+          <div class="content-title-wrapper">
+            <h3 class="content-title">본문 내용</h3>
+            <span class="post-id">ID: {{ post.post_id }}</span>
+          </div>
           <div class="post-content-box">
             <div class="post-content">
               {{ post.content }}
@@ -21,10 +27,17 @@
           <div class="attachments-box">
             <div class="attachments-content">
               <div v-if="post.attachments && post.attachments.length > 0">
-                <div v-for="(file, idx) in post.attachments" :key="idx" class="attachment-item">
+                <div 
+                  v-for="(file, idx) in post.attachments" 
+                  :key="idx" 
+                  class="attachment-item"
+                  :class="{ 'clickable': file.url || file.name }"
+                  @click="handleDownloadAttachment(file, idx)"
+                >
                   <span class="file-icon">📄</span>
-                  <span>{{ file.name }}</span>
+                  <span class="file-name">{{ file.name }}</span>
                   <span class="file-size">{{ file.size }}</span>
+                  <span v-if="file.url || file.name" class="download-icon">⬇️</span>
                 </div>
               </div>
               <div v-else class="empty-attachments">
@@ -43,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Post } from '@/types/crawling.types';
+import type { Post, Attachment } from '@/types/crawling.types';
 
 defineProps<{
   post: Post;
@@ -52,6 +65,46 @@ defineProps<{
 defineEmits<{
   close: [];
 }>();
+
+const handleDownloadAttachment = async (file: Attachment, index: number) => {
+  try {
+    // 첨부파일 URL이 있으면 사용, 없으면 post.url을 기반으로 추론
+    let downloadUrl = '';
+    
+    if (file.url) {
+      downloadUrl = file.url;
+    } else if (file.name) {
+      // 상대 경로인 경우 post.url의 base URL과 결합
+      const postUrl = new URL(post.url);
+      // 파일명이 URL인 경우
+      if (file.name.startsWith('http://') || file.name.startsWith('https://')) {
+        downloadUrl = file.name;
+      } else {
+        // 상대 경로인 경우
+        downloadUrl = new URL(file.name, postUrl.origin + postUrl.pathname.substring(0, postUrl.pathname.lastIndexOf('/'))).href;
+      }
+    }
+
+    if (!downloadUrl) {
+      alert('첨부파일 다운로드 URL을 찾을 수 없습니다.');
+      return;
+    }
+
+    // 새 창에서 다운로드 시도
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = file.name || `attachment-${index + 1}`;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (error) {
+    console.error('첨부파일 다운로드 실패:', error);
+    alert('첨부파일 다운로드에 실패했습니다.');
+  }
+};
 </script>
 
 <style scoped>
@@ -78,10 +131,23 @@ defineEmits<{
   flex-shrink: 0;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 20px;
   border-bottom: 1px solid var(--border);
   background: white;
+}
+
+.header-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.post-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 8px;
+  word-break: break-word;
 }
 
 @media (max-width: 768px) {
@@ -140,11 +206,24 @@ defineEmits<{
   margin-bottom: 20px;
 }
 
+.content-title-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
 .content-title {
   font-size: 14px;
   font-weight: 600;
-  margin-bottom: 8px;
   color: var(--text-primary);
+  margin: 0;
+}
+
+.post-id {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .post-content-box {
@@ -201,6 +280,26 @@ defineEmits<{
   border-radius: 6px;
   margin-bottom: 8px;
   font-size: 13px;
+}
+
+.attachment-item.clickable {
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.attachment-item.clickable:hover {
+  background: var(--border);
+}
+
+.file-name {
+  flex: 1;
+  min-width: 0;
+  word-break: break-all;
+}
+
+.download-icon {
+  font-size: 14px;
+  opacity: 0.7;
 }
 
 .file-icon {

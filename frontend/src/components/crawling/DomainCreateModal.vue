@@ -23,9 +23,9 @@
         <button 
           class="btn-primary" 
           @click="submitForm"
-          :disabled="!isFormValid"
+          :disabled="!isFormValid || isSubmitting"
         >
-          추가
+          {{ isSubmitting ? '처리 중...' : '추가' }}
         </button>
       </div>
     </div>
@@ -48,19 +48,31 @@ const formData = ref({
   name: '',
 });
 
+const isSubmitting = ref(false);
+
 const isFormValid = computed(() => {
   return formData.value.name.trim() !== '';
 });
 
 const submitForm = () => {
+  if (isSubmitting.value) {
+    return; // 이미 제출 중이면 무시
+  }
+  
   if (!isFormValid.value) {
     alert('모든 필수 필드를 채워주세요');
     return;
   }
 
+  isSubmitting.value = true;
   emit('create', {
     name: formData.value.name.trim(),
   });
+  
+  // 이벤트 발생 후 약간의 지연을 두고 플래그 리셋 (모달이 닫히지 않는 경우 대비)
+  setTimeout(() => {
+    isSubmitting.value = false;
+  }, 1000);
 };
 </script>
 

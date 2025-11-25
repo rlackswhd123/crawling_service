@@ -33,6 +33,39 @@
             >
             <small class="input-hint">💡 본문 셀렉터 추천을 위해 실제 게시글 상세 페이지 URL이 필요합니다</small>
           </div>
+
+          <!-- 분석 버튼 -->
+          <div class="form-group">
+            <button 
+              class="btn-analyze" 
+              @click="startAnalysis" 
+              :disabled="!formData.sampleUrls || isAnalyzing"
+            >
+              <span v-if="!isAnalyzing">🔍 본문 셀렉터 분석 시작</span>
+              <span v-else class="analyzing">
+                <span class="spinner"></span>
+                {{ analyzingStatus }}
+              </span>
+            </button>
+            <small v-if="!formData.sampleUrls" class="input-hint" style="display: block; margin-top: 8px; color: var(--danger);">
+              ⚠️ 샘플 게시글 URL을 입력해야 분석할 수 있습니다
+            </small>
+
+            <!-- 분석 진행 상태 -->
+            <div v-if="isAnalyzing" class="analysis-progress">
+              <div class="progress-item" :class="{ active: analysisStep === 'selector' }">
+                <span class="progress-icon">{{ analysisStep === 'selector' ? '⏳' : '✓' }}</span>
+                <span>본문 셀렉터 감지 중...</span>
+              </div>
+            </div>
+
+            <!-- 에러 메시지 -->
+            <div v-if="analysisError" class="error-message">
+              <span class="error-icon">⚠️</span>
+              <span>{{ analysisError }}</span>
+              <button class="btn-retry" @click="startAnalysis">재시도</button>
+            </div>
+          </div>
         </div>
 
         <!-- Step 2: 통합 분석 -->
@@ -40,29 +73,6 @@
           <div class="step-header">
             <span class="step-number">2</span>
             <h3>사이트 분석</h3>
-          </div>
-          
-          <button 
-            class="btn-analyze" 
-            @click="startAnalysis" 
-            :disabled="!formData.sampleUrls || isAnalyzing"
-          >
-            <span v-if="!isAnalyzing">🔍 본문 셀렉터 분석 시작</span>
-            <span v-else class="analyzing">
-              <span class="spinner"></span>
-              {{ analyzingStatus }}
-            </span>
-          </button>
-          <small v-if="!formData.sampleUrls" class="input-hint" style="display: block; margin-top: 8px; color: var(--danger);">
-            ⚠️ 샘플 게시글 URL을 입력해야 분석할 수 있습니다
-          </small>
-
-          <!-- 분석 진행 상태 -->
-          <div v-if="isAnalyzing" class="analysis-progress">
-            <div class="progress-item" :class="{ active: analysisStep === 'selector' }">
-              <span class="progress-icon">{{ analysisStep === 'selector' ? '⏳' : '✓' }}</span>
-              <span>본문 셀렉터 감지 중...</span>
-            </div>
           </div>
 
           <!-- 셀렉터 결과 -->
@@ -169,13 +179,6 @@
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- 에러 메시지 -->
-          <div v-if="analysisError" class="error-message">
-            <span class="error-icon">⚠️</span>
-            <span>{{ analysisError }}</span>
-            <button class="btn-retry" @click="startAnalysis">재시도</button>
           </div>
         </div>
 

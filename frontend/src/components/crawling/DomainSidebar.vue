@@ -23,13 +23,39 @@
             <span class="expand-icon" :class="{ expanded: expandedDomainId === domain.id }">▶</span>
             <span class="domain-name">{{ domain.name }}</span>
           </div>
-          <button
-            class="btn-delete"
-            @click.stop="$emit('delete-domain', domain.id)"
-            title="도메인 삭제"
-          >
-            ×
-          </button>
+          <div class="domain-actions" @click.stop>
+            <button
+              class="btn-more"
+              @click.stop="toggleDomainMenu(domain.id)"
+              title="더보기"
+            >
+              ⋯
+            </button>
+            <div
+              v-if="showMenuId === domain.id"
+              class="context-menu"
+              @click.stop
+            >
+              <button
+                class="menu-item"
+                @click.stop="handleAddService(domain.id)"
+              >
+                추가
+              </button>
+              <button
+                class="menu-item"
+                @click.stop="handleEditDomain(domain.id)"
+              >
+                편집
+              </button>
+              <button
+                class="menu-item menu-item-danger"
+                @click.stop="handleDeleteDomain(domain.id)"
+              >
+                삭제
+              </button>
+            </div>
+          </div>
         </div>
         
         <!-- 서비스 목록 (아코디언) -->
@@ -48,21 +74,33 @@
             @click.stop="selectService(domain.id, service.id)"
           >
             <span class="service-name">{{ service.name }}</span>
-            <button
-              class="btn-delete-service"
-              @click.stop="$emit('delete-service', domain.id, service.id)"
-              title="서비스 삭제"
-            >
-              ×
-            </button>
-          </div>
-          <!-- 게시판 추가 버튼 -->
-          <div 
-            class="service-add-item"
-            @click.stop="$emit('open-create-service-modal', domain.id)"
-          >
-            <span class="service-add-icon">+</span>
-            <span class="service-add-text">게시판 추가</span>
+            <div class="service-actions" @click.stop>
+              <button
+                class="btn-more-service"
+                @click.stop="toggleServiceMenu(`${domain.id}-${service.id}`)"
+                title="더보기"
+              >
+                ⋯
+              </button>
+              <div
+                v-if="showMenuKey === `${domain.id}-${service.id}`"
+                class="context-menu"
+                @click.stop
+              >
+                <button
+                  class="menu-item"
+                  @click.stop="handleEditService(domain.id, service.id)"
+                >
+                  편집
+                </button>
+                <button
+                  class="menu-item menu-item-danger"
+                  @click.stop="handleDeleteService(domain.id, service.id)"
+                >
+                  삭제
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -71,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import type { Domain } from '@/types/crawling.types';
 
 defineProps<{
@@ -84,11 +122,15 @@ const emit = defineEmits<{
   'select-service': [domainId: number | string, serviceId: number | string];
   'open-create-modal': [];
   'open-create-service-modal': [domainId: number | string];
+  'edit-domain': [domainId: number | string];
+  'edit-service': [domainId: number | string, serviceId: number | string];
   'delete-domain': [domainId: number | string];
   'delete-service': [domainId: number | string, serviceId: number | string];
 }>();
 
 const expandedDomainId = ref<number | string | null>(null);
+const showMenuId = ref<number | string | null>(null);
+const showMenuKey = ref<string | null>(null);
 
 const toggleDomain = (domainId: number | string) => {
   if (expandedDomainId.value === domainId) {
@@ -96,11 +138,77 @@ const toggleDomain = (domainId: number | string) => {
   } else {
     expandedDomainId.value = domainId;
   }
+  // 도메인 토글 시 메뉴 숨기기
+  showMenuId.value = null;
+  showMenuKey.value = null;
 };
 
 const selectService = (domainId: number | string, serviceId: number | string) => {
   emit('select-service', domainId, serviceId);
+  // 서비스 선택 시 메뉴 숨기기
+  showMenuId.value = null;
+  showMenuKey.value = null;
 };
+
+const toggleDomainMenu = (domainId: number | string) => {
+  if (showMenuId.value === domainId) {
+    showMenuId.value = null;
+  } else {
+    showMenuId.value = domainId;
+    showMenuKey.value = null; // 다른 메뉴 닫기
+  }
+};
+
+const toggleServiceMenu = (key: string) => {
+  if (showMenuKey.value === key) {
+    showMenuKey.value = null;
+  } else {
+    showMenuKey.value = key;
+    showMenuId.value = null; // 다른 메뉴 닫기
+  }
+};
+
+const handleAddService = (domainId: number | string) => {
+  emit('open-create-service-modal', domainId);
+  showMenuId.value = null;
+};
+
+const handleEditDomain = (domainId: number | string) => {
+  emit('edit-domain', domainId);
+  showMenuId.value = null;
+};
+
+const handleEditService = (domainId: number | string, serviceId: number | string) => {
+  emit('edit-service', domainId, serviceId);
+  showMenuKey.value = null;
+};
+
+const handleDeleteDomain = (domainId: number | string) => {
+  emit('delete-domain', domainId);
+  showMenuId.value = null;
+};
+
+const handleDeleteService = (domainId: number | string, serviceId: number | string) => {
+  emit('delete-service', domainId, serviceId);
+  showMenuKey.value = null;
+};
+
+// 외부 클릭 시 메뉴 닫기
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as HTMLElement;
+  if (!target.closest('.domain-actions') && !target.closest('.service-actions')) {
+    showMenuId.value = null;
+    showMenuKey.value = null;
+  }
+};
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+});
 </script>
 
 <style scoped>
@@ -243,28 +351,38 @@ const selectService = (domainId: number | string, serviceId: number | string) =>
   flex: 1;
 }
 
-.btn-delete-service {
+.service-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.btn-more-service {
   width: 20px;
   height: 20px;
   padding: 0;
-  background: var(--danger);
-  color: white;
-  border-radius: 50%;
-  font-size: 16px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
   transition: opacity 0.2s;
-  flex-shrink: 0;
+  cursor: pointer;
+  line-height: 1;
 }
 
-.service-item:hover .btn-delete-service {
+.service-item:hover .btn-more-service {
   opacity: 1;
 }
 
-.btn-delete-service:hover {
-  background: #dc2626;
+.btn-more-service:hover {
+  background: var(--bg-light);
+  color: var(--text-primary);
   opacity: 1;
 }
 
@@ -294,29 +412,78 @@ const selectService = (domainId: number | string, serviceId: number | string) =>
   font-size: 14px;
 }
 
-.btn-delete {
+.domain-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.btn-more {
   width: 24px;
   height: 24px;
   padding: 0;
-  background: var(--danger);
-  color: white;
-  border-radius: 50%;
-  font-size: 18px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
   transition: opacity 0.2s;
-  flex-shrink: 0;
+  cursor: pointer;
+  line-height: 1;
 }
 
-.domain-item:hover .btn-delete {
+.domain-item:hover .btn-more {
   opacity: 1;
 }
 
-.btn-delete:hover {
-  background: #dc2626;
+.btn-more:hover {
+  background: var(--bg-light);
+  color: var(--text-primary);
   opacity: 1;
+}
+
+.context-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 120px;
+  overflow: hidden;
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.menu-item:hover {
+  background: var(--bg-light);
+}
+
+.menu-item-danger {
+  color: var(--danger);
+}
+
+.menu-item-danger:hover {
+  background: #fee2e2;
 }
 </style>
 
